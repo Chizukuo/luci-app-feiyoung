@@ -159,6 +159,6 @@ logread -f -e chongyoung
 ## 👨‍💻 作者与致谢
 
 - **核心开发/维护**: chizukuo (<chizukuo@icloud.com>)
-- **原脚本逻辑**: dapaoxixixi
+- **原脚本逻辑**: [electkismet](https://github.com/electkismet/feiyoung)
 
 本项目基于 dapaoxixixi 的 Shell 脚本进行深度重构与开发，将其移植为标准的 OpenWrt LuCI 插件，引入了图形化配置、进程守护 (Procd) 及系统日志集成等现代化特性。
