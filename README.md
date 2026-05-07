@@ -1,4 +1,4 @@
-# luci-app-chongyoung
+# luci-app-feiyoung
 
 [![OpenWrt](https://img.shields.io/badge/OpenWrt-21.02%2B-blue.svg)](https://openwrt.org/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
