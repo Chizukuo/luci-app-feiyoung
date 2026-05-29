@@ -73,11 +73,57 @@ enable_5g() {
     fi
 }
 
+# get_lan_interfaces: 获取所有物理有线 LAN 接口名称
+get_lan_interfaces() {
+    local port
+    if [ -d "/sys/class/net/br-lan/brif" ]; then
+        for port in $(ls /sys/class/net/br-lan/brif); do
+            # 过滤掉无线接口
+            if ! echo "$port" | grep -q -E "wlan|ath|wl|ap"; then
+                echo "$port"
+            fi
+        done
+    else
+        # 兜底方案：从 UCI 配置读取
+        local ports=$(uci -q get network.lan.ports)
+        [ -z "$ports" ] && ports=$(uci -q get network.lan.ifname)
+        for port in $ports; do
+            if ! echo "$port" | grep -q -E "wlan|ath|wl|ap"; then
+                echo "$port"
+            fi
+        done
+    fi
+}
+
+# disable_lan_ports: 临时关闭所有有线 LAN 网口以防止电脑 NCSI 误判
+disable_lan_ports() {
+    local port
+    rm -f /tmp/feiyoung_disabled_lan_ports
+    for port in $(get_lan_interfaces); do
+        log "正在临时关闭有线网口: $port"
+        echo "$port" >> /tmp/feiyoung_disabled_lan_ports
+        ifconfig "$port" down >/dev/null 2>&1
+    done
+}
+
+# enable_lan_ports: 恢复有线 LAN 网口
+enable_lan_ports() {
+    local port
+    if [ -f /tmp/feiyoung_disabled_lan_ports ]; then
+        for port in $(cat /tmp/feiyoung_disabled_lan_ports); do
+            log "正在恢复有线网口: $port"
+            ifconfig "$port" up >/dev/null 2>&1
+        done
+        rm -f /tmp/feiyoung_disabled_lan_ports
+    fi
+}
+
 # cleanup: 脚本退出时若处于休眠断网状态，恢复网络接口
 cleanup() {
     log "脚本退出，正在恢复网络接口..."
     if [ -f /tmp/feiyoung_wan_paused ]; then
         enable_5g
+        enable_lan_ports
         ifconfig br-lan up >/dev/null 2>&1 # 保证旧版本的 br-lan down 得到恢复
         wifi up >/dev/null 2>&1            # 保证旧版本的 wifi down 得到恢复
         ifup wan >/dev/null 2>&1
@@ -354,7 +400,7 @@ main() {
         if check_pause_time; then
             update_status "休眠中 (计划任务 $pause_start - $pause_end)"
             
-            # 若配置要求，断开 WAN 并持续关闭 5G Wi-Fi 信号直至休眠结束
+            # 若配置要求，断开 WAN 并持续关闭 5G Wi-Fi 与有线 LAN 端口直至休眠结束
             if [ "$pause_disconnect_wan" = "1" ]; then
                 if [ ! -f /tmp/feiyoung_wan_paused ]; then
                     log "进入休眠时间，正在断开 WAN 接口..."
@@ -363,6 +409,9 @@ main() {
                     log "正在关闭 5G Wi-Fi 信号..."
                     disable_5g
                     
+                    log "正在关闭有线 LAN 端口..."
+                    disable_lan_ports
+                    
                     touch /tmp/feiyoung_wan_paused
                 fi
             fi
@@ -370,10 +419,11 @@ main() {
             sleep 60
             continue
         else
-            # 非休眠时间，若之前暂停过则恢复 WAN 及 5G Wi-Fi 信号
+            # 非休眠时间，若之前暂停过则恢复 WAN、5G Wi-Fi 及有线 LAN 端口
             if [ -f /tmp/feiyoung_wan_paused ]; then
                 log "休眠结束，正在恢复网络接口..."
                 enable_5g
+                enable_lan_ports
                 ifup wan
                 rm -f /tmp/feiyoung_wan_paused
                 # 恢复后给一点时间获取 IP
