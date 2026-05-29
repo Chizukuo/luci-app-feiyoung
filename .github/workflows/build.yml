@@ -75,6 +75,8 @@ jobs:
       - name: Compile
         run: |
           cd sdk
+          # 清理缓存的 feeds 目录，防止 git pull 在 detached HEAD 状态下失败
+          rm -rf feeds
           # 更新 feeds 以获取依赖 (luci, curl 等)
           ./scripts/feeds update -a
           ./scripts/feeds install -a
