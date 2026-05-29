@@ -11,6 +11,18 @@ HEARTBEAT_URL="http://58.53.199.146:8007/Hv6_dW"
 CACHE_DAY=""
 CACHE_PWD=""
 
+# cleanup: 脚本退出时若处于休眠断网状态，恢复网络接口
+cleanup() {
+    log "脚本退出，正在恢复网络接口..."
+    if [ -f /tmp/feiyoung_wan_paused ]; then
+        ifconfig br-lan up >/dev/null 2>&1
+        wifi up >/dev/null 2>&1
+        ifup wan >/dev/null 2>&1
+        rm -f /tmp/feiyoung_wan_paused
+    fi
+}
+trap cleanup EXIT INT TERM
+
 # log: 写入系统日志（tag: feiyoung）
 # 参数：$1 - 日志内容
 log() {
@@ -279,27 +291,16 @@ main() {
         if check_pause_time; then
             update_status "休眠中 (计划任务 $pause_start - $pause_end)"
             
-            # 若配置要求，断开 WAN 并短暂关闭 LAN/Wi-Fi 信号
+            # 若配置要求，断开 WAN 并持续关闭 LAN/Wi-Fi 信号直至休眠结束
             if [ "$pause_disconnect_wan" = "1" ]; then
                 if [ ! -f /tmp/feiyoung_wan_paused ]; then
                     log "进入休眠时间，正在断开 WAN 接口..."
-
                     ifdown wan
                     
-                    log "正在执行全网闪断策略 (有线+无线)..."
-                    
+                    log "正在关闭局域网及 Wi-Fi 信号..."
                     ifconfig br-lan down
-
                     wifi down
-        
-                    sleep 10
                     
-                    ifconfig br-lan up
-
-                    wifi up
-                    
-                    log "局域网及 Wi-Fi 信号已恢复"
-    
                     touch /tmp/feiyoung_wan_paused
                 fi
             fi
@@ -307,9 +308,11 @@ main() {
             sleep 60
             continue
         else
-            # 非休眠时间，若之前暂停过则恢复 WAN
+            # 非休眠时间，若之前暂停过则恢复 WAN 及 LAN/Wi-Fi 信号
             if [ -f /tmp/feiyoung_wan_paused ]; then
-                log "休眠结束，正在恢复 WAN 接口..."
+                log "休眠结束，正在恢复网络接口..."
+                ifconfig br-lan up
+                wifi up
                 ifup wan
                 rm -f /tmp/feiyoung_wan_paused
                 # 恢复后给一点时间获取 IP
