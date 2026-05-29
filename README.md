@@ -22,7 +22,7 @@ OpenWrt LuCI support for FeiYoung Campus Network Auto Login.
 
 本插件提供不同版本以适应不同需求，请按需选择：
 
-- **v1.9 (推荐)**: 功能最全，支持本地自动算号、计划休眠、断网控制、仪表盘组件等高级功能。
+- **v1.9.1 (推荐)**: 功能最全，支持本地自动算号、计划休眠、断网控制、仪表盘组件等高级功能。
 - **v1.6**: 仅保留核心登录功能，需手动粘贴密码列表。代码量更少，体积极致轻量，适合存储空间极度受限的设备。
 
 ## 📦 安装方法
@@ -44,7 +44,7 @@ OpenWrt LuCI support for FeiYoung Campus Network Auto Login.
    make package/luci-app-feiyoung/compile
    ```
 
-### 方法二：安装 IPK
+### 方法二：安装 IPK (适用于 OpenWrt 24.10 及以下版本)
 
 如果你已经有了编译好的 `.ipk` 文件：
 
@@ -54,6 +54,19 @@ OpenWrt LuCI support for FeiYoung Campus Network Auto Login.
    opkg update
    opkg install /tmp/luci-app-feiyoung_*.ipk
    ```
+
+### 方法三：安装 APK (适用于 OpenWrt 25.12 及以上版本)
+
+如果你使用的是搭载全新 `apk` 包管理器的 OpenWrt 25.12 或更新版本，并获取了 `.apk` 文件：
+
+1. 将 `.apk` 文件上传到路由器 `/tmp` 目录。
+2. 执行安装命令：
+   ```bash
+   apk add --allow-untrusted /tmp/luci-app-feiyoung_*.apk
+   ```
+
+   > [!IMPORTANT]
+   > 由于手动安装的 APK 软件包没有配置官方签名，在安装时**必须**添加 `--allow-untrusted` 参数，否则系统将出于安全策略拒绝安装。
 
 ## 📖 使用指南
 
@@ -107,6 +120,10 @@ logread -f -e feiyoung
 ## 🛠️ 开发相关
 
 ### 版本历史
+
+**v1.9.1** (2026-05-29) - 适配 APK 安装并更新文档
+- 📦 适配 OpenWrt 25.12+ 引入的 APK 软件包格式
+- 📝 在 README 中添加了详细的 APK 软件包安装步骤与注意事项
 
 **v1.9** (2026-05-29) - 全局重命名为 feiyoung 并优化休眠逻辑
 - 🏷️ 全局重命名项目为 `luci-app-feiyoung`
