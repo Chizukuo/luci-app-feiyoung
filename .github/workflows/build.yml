@@ -57,8 +57,8 @@ jobs:
       - name: Prepare Package
         run: |
           # 将当前源码复制到 SDK 的 package 目录下
-          mkdir -p sdk/package/luci-app-chongyoung
-          rsync -av --exclude='sdk' --exclude='.git' --exclude='.github' . sdk/package/luci-app-chongyoung/
+          mkdir -p sdk/package/luci-app-feiyoung
+          rsync -av --exclude='sdk' --exclude='.git' --exclude='.github' . sdk/package/luci-app-feiyoung/
 
       - name: Compile
         run: |
@@ -71,12 +71,12 @@ jobs:
           make defconfig
           
           # 编译我们的包
-          make package/luci-app-chongyoung/compile V=s IGNORE_ERRORS=1
+          make package/luci-app-feiyoung/compile V=s IGNORE_ERRORS=1
 
       - name: Organize Files
         id: organize
         run: |
-          IPK_FILE=$(find sdk/bin/packages -name "luci-app-chongyoung*.ipk" | head -1)
+          IPK_FILE=$(find sdk/bin/packages -name "luci-app-feiyoung*.ipk" | head -1)
           if [ -z "$IPK_FILE" ]; then
             echo "::error::IPK file not found!"
             exit 1
@@ -88,15 +88,15 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: luci-app-chongyoung-ipk
-          path: luci-app-chongyoung*.ipk
+          name: luci-app-feiyoung-ipk
+          path: luci-app-feiyoung*.ipk
 
       - name: Upload to Release
         if: github.event_name == 'release'
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: luci-app-chongyoung*.ipk
+          file: luci-app-feiyoung*.ipk
           tag: ${{ github.ref }}
           overwrite: true
           file_glob: true

@@ -1,7 +1,7 @@
 'use strict';
 /*
- * luci-app-chongyoung - LuCI view: General settings
- * 描述: ChongYoung 校园网自动认证的 Web UI 界面
+ * luci-app-feiyoung - LuCI view: General settings
+ * 描述: FeiYoung 校园网自动认证的 Web UI 界面
  * 功能:
  *  - 显示当前运行状态并支持轮询更新
  *  - 提供重启服务按钮
@@ -27,18 +27,18 @@ return view.extend({
 	render: function() {
 		var m, s, o;
 
-		m = new form.Map('chongyoung', _('ChongYoung Network'), _('Configuration for ChongYoung Campus Network Auto Login'));
+		m = new form.Map('feiyoung', _('FeiYoung Network'), _('Configuration for FeiYoung Campus Network Auto Login'));
 
-		// Status 区块：显示当前脚本运行状态（/tmp/chongyoung_status），并提供重启操作
+		// Status 区块：显示当前脚本运行状态（/tmp/feiyoung_status），并提供重启操作
 		s = m.section(form.TypedSection, 'global', _('Status'));
 		s.anonymous = true;
 		
 		o = s.option(form.DummyValue, '_status', _('Current Status'));
 		o.rawhtml = true;
 		o.default = '<em>' + _('Collecting data...') + '</em>';
-		// cfgvalue: 从 /tmp/chongyoung_status 读取状态并用颜色提示严重性（正常=green、重连/失败=red、休眠=orange）
+		// cfgvalue: 从 /tmp/feiyoung_status 读取状态并用颜色提示严重性（正常=green、重连/失败=red、休眠=orange）
 		o.cfgvalue = function(section_id) {
-			return fs.read('/tmp/chongyoung_status').then(function(status) {
+			return fs.read('/tmp/feiyoung_status').then(function(status) {
 				status = status ? status.trim() : _('Not Running');
 				var color = 'green';
 				if (status.indexOf('重连') !== -1 || status.indexOf('失败') !== -1) {
@@ -58,7 +58,7 @@ return view.extend({
 		o.inputstyle = 'apply';
 		// 点击回调: 调用后端的 restart 操作并展示通知结果
 		o.onclick = function() {
-			return callInitAction('chongyoung', 'restart').then(function(result) {
+			return callInitAction('feiyoung', 'restart').then(function(result) {
 				if (result) {
 					ui.addNotification(null, E('p', _('Service restarted successfully. Please wait for status update.')), 'info');
 				} else {
@@ -71,8 +71,8 @@ return view.extend({
 		
 		// 定期轮询状态文件并更新界面（保持短轮询以便即时反馈）
 		poll.add(function() {
-			return fs.read('/tmp/chongyoung_status').then(function(status) {
-				var view = document.getElementById('cbi-chongyoung-global-_status');
+			return fs.read('/tmp/feiyoung_status').then(function(status) {
+				var view = document.getElementById('cbi-feiyoung-global-_status');
 				if (view) {
 					status = status ? status.trim() : _('Not Running');
 					var color = 'green';
@@ -184,7 +184,7 @@ return view.extend({
 		return m.render().then(function(nodes) {
 			var footer = E('div', { 'class': 'cbi-section', 'style': 'text-align: center; margin-top: 20px; color: #888;' }, [
 				E('span', {}, _('Project hosted on ')),
-				E('a', { 'href': 'https://github.com/Chizukuo/luci-app-chongyoung', 'target': '_blank', 'style': 'color: #0069b4; text-decoration: none; font-weight: bold;' }, 'GitHub'),
+				E('a', { 'href': 'https://github.com/Chizukuo/luci-app-feiyoung', 'target': '_blank', 'style': 'color: #0069b4; text-decoration: none; font-weight: bold;' }, 'GitHub'),
 				E('span', {}, ' | '),
 				E('span', {}, 'v1.8')
 			]);

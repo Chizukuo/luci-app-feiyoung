@@ -36,12 +36,12 @@ OpenWrt LuCI support for FeiYoung Campus Network Auto Login.
 1. 将本仓库克隆到 OpenWrt SDK 的 `package/` 目录下：
    ```bash
    cd package/
-   git clone https://github.com/Chizukuo/luci-app-chongyoung.git
+   git clone https://github.com/Chizukuo/luci-app-feiyoung.git
    ```
-2. 运行 `make menuconfig`，在 `LuCI` -> `3. Applications` 中选中 `luci-app-chongyoung`。
+2. 运行 `make menuconfig`，在 `LuCI` -> `3. Applications` 中选中 `luci-app-feiyoung`。
 3. 编译固件或单独编译 IPK 包：
    ```bash
-   make package/luci-app-chongyoung/compile
+   make package/luci-app-feiyoung/compile
    ```
 
 ### 方法二：安装 IPK
@@ -52,7 +52,7 @@ OpenWrt LuCI support for FeiYoung Campus Network Auto Login.
 2. 执行安装命令：
    ```bash
    opkg update
-   opkg install /tmp/luci-app-chongyoung_*.ipk
+   opkg install /tmp/luci-app-feiyoung_*.ipk
    ```
 
 ## 📖 使用指南
@@ -61,7 +61,7 @@ OpenWrt LuCI support for FeiYoung Campus Network Auto Login.
 这是最便捷的方式，只需一次性配置，无需每月更新。
 
 1. 登录路由器 OpenWrt 后台。
-2. 进入菜单：`服务 (Services)` -> `ChongYoung Network`。
+2. 进入菜单：`服务 (Services)` -> `FeiYoung Network`。
 3. **基本设置**:
    - 勾选 `启用 (Enable)`。
    - 输入 `手机号 (Phone Number)`。
@@ -80,10 +80,10 @@ OpenWrt LuCI support for FeiYoung Campus Network Auto Login.
 
 ```bash
 # 查看最近的日志
-logread -e chongyoung
+logread -e feiyoung
 
 # 实时监控日志
-logread -f -e chongyoung
+logread -f -e feiyoung
 ```
 
 ### 常见日志说明
@@ -129,19 +129,19 @@ logread -f -e chongyoung
 ├── README.md                       # 项目说明
 ├── htdocs/                         # Web 界面文件
 │   └── luci-static/resources/view/
-│       ├── chongyoung/
+│       ├── feiyoung/
 │       │   └── general.js          # LuCI 配置界面
 │       └── status/include/
-│           └── 10_chongyoung.js    # 状态页仪表盘组件
+│           └── 10_feiyoung.js    # 状态页仪表盘组件
 ├── luasrc/                         # Lua 控制层
-│   └── controller/chongyoung.lua   # LuCI 路由器
+│   └── controller/feiyoung.lua   # LuCI 路由器
 ├── root/                           # 系统集成文件
-│   ├── etc/config/chongyoung       # UCI 配置文件
-│   ├── etc/init.d/chongyoung       # Procd 启动脚本
-│   ├── etc/uci-defaults/99_chongyoung  # 升级迁移脚本
-│   ├── usr/bin/chongyoung.sh       # 核心守护进程
-│   ├── usr/share/chongyoung/calc_pwd.lua  # 密码算法 (Lua 版)
-│   └── usr/share/rpcd/acl.d/luci-app-chongyoung.json  # RPC 权限控制
+│   ├── etc/config/feiyoung       # UCI 配置文件
+│   ├── etc/init.d/feiyoung       # Procd 启动脚本
+│   ├── etc/uci-defaults/99_feiyoung  # 升级迁移脚本
+│   ├── usr/bin/feiyoung.sh       # 核心守护进程
+│   ├── usr/share/feiyoung/calc_pwd.lua  # 密码算法 (Lua 版)
+│   └── usr/share/rpcd/acl.d/luci-app-feiyoung.json  # RPC 权限控制
 └── LICENSE                         # MIT 许可证
 ```
 

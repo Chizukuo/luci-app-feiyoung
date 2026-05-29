@@ -1,0 +1,18 @@
+{
+	"luci-app-feiyoung": {
+		"description": "Grant UCI access for luci-app-feiyoung",
+		"read": {
+			"uci": [ "feiyoung" ],
+			"file": {
+				"/tmp/feiyoung_status": [ "read" ],
+				"/etc/init.d/feiyoung": [ "exec" ]
+			}
+		},
+		"write": {
+			"uci": [ "feiyoung" ],
+			"file": {
+				"/etc/init.d/feiyoung": [ "exec" ]
+			}
+		}
+	}
+}

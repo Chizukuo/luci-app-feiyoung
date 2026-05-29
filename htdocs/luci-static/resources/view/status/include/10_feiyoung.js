@@ -3,10 +3,10 @@
 'require fs';
 
 return baseclass.extend({
-	title: _('ChongYoung Network'),
+	title: _('FeiYoung Network'),
 
 	load: function() {
-		return fs.read('/tmp/chongyoung_status').catch(function() {
+		return fs.read('/tmp/feiyoung_status').catch(function() {
 			return '';
 		});
 	},

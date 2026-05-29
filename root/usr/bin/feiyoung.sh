@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# luci-app-chongyoung: 自动认证与心跳脚本
+# luci-app-feiyoung: 自动认证与心跳脚本
 # 说明：定时检测网络并在需要时进行认证，向心跳服务器发送心跳。
 # 注意：仅在 UCI 配置启用时运行。
 #
@@ -11,58 +11,58 @@ HEARTBEAT_URL="http://58.53.199.146:8007/Hv6_dW"
 CACHE_DAY=""
 CACHE_PWD=""
 
-# log: 写入系统日志（tag: chongyoung）
+# log: 写入系统日志（tag: feiyoung）
 # 参数：$1 - 日志内容
 log() {
-    logger -t chongyoung "$1"
+    logger -t feiyoung "$1"
 }
 
-# update_status: 将状态写入 /tmp/chongyoung_status
+# update_status: 将状态写入 /tmp/feiyoung_status
 # 参数：$1 - 状态文本
 update_status() {
-    echo "$1" > /tmp/chongyoung_status
+    echo "$1" > /tmp/feiyoung_status
 }
 
 # get_config: 从 UCI 读取脚本所需配置；若未启用则退出脚本
 # 设置变量：user、password_seed、pause_*（计划任务）、check_interval、connect_timeout、total_timeout、system、prefix、AidcAuthAttr*
 get_config() {
-    enabled=$(uci -q get chongyoung.general.enabled)
+    enabled=$(uci -q get feiyoung.general.enabled)
     [ "$enabled" = "1" ] || exit 0
     
-    user=$(uci -q get chongyoung.general.username)
-    password_seed=$(uci -q get chongyoung.general.password_seed)
+    user=$(uci -q get feiyoung.general.username)
+    password_seed=$(uci -q get feiyoung.general.password_seed)
     
     # 计划任务相关配置（启用/起止时间/是否断开 WAN）
-    pause_enabled=$(uci -q get chongyoung.general.pause_enabled)
-    pause_start=$(uci -q get chongyoung.general.pause_start)
-    pause_end=$(uci -q get chongyoung.general.pause_end)
-    pause_disconnect_wan=$(uci -q get chongyoung.general.pause_disconnect_wan)
+    pause_enabled=$(uci -q get feiyoung.general.pause_enabled)
+    pause_start=$(uci -q get feiyoung.general.pause_start)
+    pause_end=$(uci -q get feiyoung.general.pause_end)
+    pause_disconnect_wan=$(uci -q get feiyoung.general.pause_disconnect_wan)
     
     # 超时与间隔配置（采用默认值兜底）
-    check_interval=$(uci -q get chongyoung.general.check_interval)
+    check_interval=$(uci -q get feiyoung.general.check_interval)
     [ -z "$check_interval" ] && check_interval=30
     
-    connect_timeout=$(uci -q get chongyoung.general.connect_timeout)
+    connect_timeout=$(uci -q get feiyoung.general.connect_timeout)
     [ -z "$connect_timeout" ] && connect_timeout=5
     
-    total_timeout=$(uci -q get chongyoung.general.total_timeout)
+    total_timeout=$(uci -q get feiyoung.general.total_timeout)
     [ -z "$total_timeout" ] && total_timeout=10
     
     # 更新 curl 参数
     CURL_OPTS="-s --connect-timeout $connect_timeout --max-time $total_timeout"
     
-    system=$(uci -q get chongyoung.general.system)
-    prefix=$(uci -q get chongyoung.general.prefix)
+    system=$(uci -q get feiyoung.general.system)
+    prefix=$(uci -q get feiyoung.general.prefix)
     
     # 固定认证参数
-    AidcAuthAttr3=$(uci -q get chongyoung.general.AidcAuthAttr3)
-    AidcAuthAttr4=$(uci -q get chongyoung.general.AidcAuthAttr4)
-    AidcAuthAttr5=$(uci -q get chongyoung.general.AidcAuthAttr5)
-    AidcAuthAttr6=$(uci -q get chongyoung.general.AidcAuthAttr6)
-    AidcAuthAttr8=$(uci -q get chongyoung.general.AidcAuthAttr8)
-    AidcAuthAttr15=$(uci -q get chongyoung.general.AidcAuthAttr15)
-    AidcAuthAttr22=$(uci -q get chongyoung.general.AidcAuthAttr22)
-    AidcAuthAttr23=$(uci -q get chongyoung.general.AidcAuthAttr23)
+    AidcAuthAttr3=$(uci -q get feiyoung.general.AidcAuthAttr3)
+    AidcAuthAttr4=$(uci -q get feiyoung.general.AidcAuthAttr4)
+    AidcAuthAttr5=$(uci -q get feiyoung.general.AidcAuthAttr5)
+    AidcAuthAttr6=$(uci -q get feiyoung.general.AidcAuthAttr6)
+    AidcAuthAttr8=$(uci -q get feiyoung.general.AidcAuthAttr8)
+    AidcAuthAttr15=$(uci -q get feiyoung.general.AidcAuthAttr15)
+    AidcAuthAttr22=$(uci -q get feiyoung.general.AidcAuthAttr22)
+    AidcAuthAttr23=$(uci -q get feiyoung.general.AidcAuthAttr23)
 } 
 
 # init_network: 请求运营商网关以获取认证所需参数（fylgurl、AidcAuthAttr1）
@@ -107,9 +107,9 @@ login() {
     else
         # 若设置了密码种子，尝试调用外部计算脚本
         if [ -n "$password_seed" ]; then
-            if [ -x "/usr/share/chongyoung/calc_pwd.lua" ]; then
+            if [ -x "/usr/share/feiyoung/calc_pwd.lua" ]; then
                 # 调用脚本并检查退出码与输出
-                calc_out=$(/usr/share/chongyoung/calc_pwd.lua "$password_seed" "$day_num")
+                calc_out=$(/usr/share/feiyoung/calc_pwd.lua "$password_seed" "$day_num")
                 if [ $? -eq 0 ] && [ -n "$calc_out" ]; then
                     passwd="$calc_out"
                 else
@@ -123,7 +123,7 @@ login() {
 
 # 回退：从 UCI 的 password_list 中获取对应行的密码
             if [ -z "$passwd" ]; then
-                password_list=$(uci -q get chongyoung.daily.password_list)
+                password_list=$(uci -q get feiyoung.daily.password_list)
                 
                 # password_list 为空视为配置错误
             if [ -z "$password_list" ]; then
@@ -243,7 +243,7 @@ check_pause_time() {
     [ "$current_year" -lt 2019 ] && return 1
     
     # 必须先成功联网一次（确保NTP有机会同步）才允许进入休眠
-    [ -f /tmp/chongyoung_time_verified ] || return 1
+    [ -f /tmp/feiyoung_time_verified ] || return 1
     
     current_time=$(date +%H%M)
     # 去除冒号，例如 23:30 -> 2330
@@ -272,7 +272,7 @@ main() {
     get_config
     
     # 清理上次运行可能残留的时间验证标志
-    rm -f /tmp/chongyoung_time_verified
+    rm -f /tmp/feiyoung_time_verified
     
     while true; do
         # 判断是否处于休眠时段
@@ -281,7 +281,7 @@ main() {
             
             # 若配置要求，断开 WAN 并短暂关闭 LAN/Wi-Fi 信号
             if [ "$pause_disconnect_wan" = "1" ]; then
-                if [ ! -f /tmp/chongyoung_wan_paused ]; then
+                if [ ! -f /tmp/feiyoung_wan_paused ]; then
                     log "进入休眠时间，正在断开 WAN 接口..."
 
                     ifdown wan
@@ -300,7 +300,7 @@ main() {
                     
                     log "局域网及 Wi-Fi 信号已恢复"
     
-                    touch /tmp/chongyoung_wan_paused
+                    touch /tmp/feiyoung_wan_paused
                 fi
             fi
             
@@ -308,10 +308,10 @@ main() {
             continue
         else
             # 非休眠时间，若之前暂停过则恢复 WAN
-            if [ -f /tmp/chongyoung_wan_paused ]; then
+            if [ -f /tmp/feiyoung_wan_paused ]; then
                 log "休眠结束，正在恢复 WAN 接口..."
                 ifup wan
-                rm -f /tmp/chongyoung_wan_paused
+                rm -f /tmp/feiyoung_wan_paused
                 # 恢复后给一点时间获取 IP
                 sleep 10
             fi
@@ -322,7 +322,7 @@ main() {
             update_status "运行中 - 网络正常"
             
             # 首次检测到网络恢复时，尝试同步时间并标记为已验证
-            if [ ! -f /tmp/chongyoung_time_verified ]; then
+            if [ ! -f /tmp/feiyoung_time_verified ]; then
                 sync_success=0
                 
                 # 1. 优先尝试系统配置的 NTP 服务器
@@ -359,7 +359,7 @@ main() {
                 fi
 
                 if [ $sync_success -eq 1 ]; then
-                    touch /tmp/chongyoung_time_verified
+                    touch /tmp/feiyoung_time_verified
                 else
                     log "所有时间同步手段均失败，保留未验证状态"
                 fi
