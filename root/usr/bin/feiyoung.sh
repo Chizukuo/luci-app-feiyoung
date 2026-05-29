@@ -11,12 +11,75 @@ HEARTBEAT_URL="http://58.53.199.146:8007/Hv6_dW"
 CACHE_DAY=""
 CACHE_PWD=""
 
+# get_5g_radios: 获取所有 5G 无线设备名称
+get_5g_radios() {
+    local dev
+    for dev in $(uci -q show wireless | grep "=wifi-device" | cut -d. -f2 | cut -d= -f1); do
+        local band=$(uci -q get wireless.$dev.band)
+        local hwmode=$(uci -q get wireless.$dev.hwmode)
+        local channel=$(uci -q get wireless.$dev.channel)
+        
+        local is_5g=0
+        if [ "$band" = "5g" ]; then
+            is_5g=1
+        elif [ "$band" = "2g" ]; then
+            is_5g=0
+        elif echo "$hwmode" | grep -q -E "a|ac|ax"; then
+            is_5g=1
+        elif [ -n "$channel" ] && [ "$channel" != "auto" ] && [ "$channel" -gt 14 ] 2>/dev/null; then
+            is_5g=1
+        fi
+        
+        if [ "$is_5g" = "1" ]; then
+            echo "$dev"
+        fi
+    done
+}
+
+# disable_5g: 临时禁用 5G 无线广播
+disable_5g() {
+    local dev
+    local changed=0
+    rm -f /tmp/feiyoung_disabled_radios
+    for dev in $(get_5g_radios); do
+        if [ "$(uci -q get wireless.$dev.disabled)" != "1" ]; then
+            log "正在临时关闭 5G 无线设备: $dev"
+            echo "$dev" >> /tmp/feiyoung_disabled_radios
+            uci set wireless.$dev.disabled='1'
+            changed=1
+        fi
+    done
+    if [ "$changed" = "1" ]; then
+        uci commit wireless
+        wifi reload >/dev/null 2>&1 || wifi >/dev/null 2>&1
+    fi
+}
+
+# enable_5g: 恢复被临时禁用的 5G 无线广播
+enable_5g() {
+    local dev
+    local changed=0
+    if [ -f /tmp/feiyoung_disabled_radios ]; then
+        for dev in $(cat /tmp/feiyoung_disabled_radios); do
+            log "正在恢复 5G 无线设备: $dev"
+            uci delete wireless.$dev.disabled
+            changed=1
+        done
+        rm -f /tmp/feiyoung_disabled_radios
+    fi
+    if [ "$changed" = "1" ]; then
+        uci commit wireless
+        wifi reload >/dev/null 2>&1 || wifi >/dev/null 2>&1
+    fi
+}
+
 # cleanup: 脚本退出时若处于休眠断网状态，恢复网络接口
 cleanup() {
     log "脚本退出，正在恢复网络接口..."
     if [ -f /tmp/feiyoung_wan_paused ]; then
-        ifconfig br-lan up >/dev/null 2>&1
-        wifi up >/dev/null 2>&1
+        enable_5g
+        ifconfig br-lan up >/dev/null 2>&1 # 保证旧版本的 br-lan down 得到恢复
+        wifi up >/dev/null 2>&1            # 保证旧版本的 wifi down 得到恢复
         ifup wan >/dev/null 2>&1
         rm -f /tmp/feiyoung_wan_paused
     fi
@@ -291,15 +354,14 @@ main() {
         if check_pause_time; then
             update_status "休眠中 (计划任务 $pause_start - $pause_end)"
             
-            # 若配置要求，断开 WAN 并持续关闭 LAN/Wi-Fi 信号直至休眠结束
+            # 若配置要求，断开 WAN 并持续关闭 5G Wi-Fi 信号直至休眠结束
             if [ "$pause_disconnect_wan" = "1" ]; then
                 if [ ! -f /tmp/feiyoung_wan_paused ]; then
                     log "进入休眠时间，正在断开 WAN 接口..."
                     ifdown wan
                     
-                    log "正在关闭局域网及 Wi-Fi 信号..."
-                    ifconfig br-lan down
-                    wifi down
+                    log "正在关闭 5G Wi-Fi 信号..."
+                    disable_5g
                     
                     touch /tmp/feiyoung_wan_paused
                 fi
@@ -308,11 +370,10 @@ main() {
             sleep 60
             continue
         else
-            # 非休眠时间，若之前暂停过则恢复 WAN 及 LAN/Wi-Fi 信号
+            # 非休眠时间，若之前暂停过则恢复 WAN 及 5G Wi-Fi 信号
             if [ -f /tmp/feiyoung_wan_paused ]; then
                 log "休眠结束，正在恢复网络接口..."
-                ifconfig br-lan up
-                wifi up
+                enable_5g
                 ifup wan
                 rm -f /tmp/feiyoung_wan_paused
                 # 恢复后给一点时间获取 IP
