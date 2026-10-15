@@ -144,6 +144,16 @@ logread -e feiyoung
 logread -f -e feiyoung
 ```
 
+提交 Issue 时可附上诊断信息。诊断脚本只读、自动脱敏，为节省 flash 不随安装包分发，需要时从仓库取 `root/usr/bin/feiyoung-diagnose` 放到内存目录 `/tmp` 临时运行：
+
+```bash
+# 在电脑上（OpenWrt 无 sftp-server，scp 需加 -O）
+scp -O root/usr/bin/feiyoung-diagnose root@192.168.1.1:/tmp/
+
+# 在路由器上
+sh /tmp/feiyoung-diagnose
+```
+
 ### 典型日志释义
 
 - `网络已上线，执行自定义用户脚本 (/etc/feiyoung.user online)`：所有/可用会话认证成功且连通性校验通过，已触发外部用户联动。

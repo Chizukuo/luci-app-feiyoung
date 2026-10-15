@@ -765,7 +765,7 @@ teardown_mwan_routing() {
     for p in $(seq 90 110); do
         ip rule del priority $p 2>/dev/null || true
     done
-    for p in $(seq 1010 1050); do
+    for p in $(seq 1000 1050); do
         ip rule del priority $p 2>/dev/null || true
     done
     for p in $(seq 100 110); do
@@ -801,9 +801,13 @@ apply_mwan_routing() {
 
     # 清理旧的规则
     local p
-    for p in $(seq 1010 1050); do
+    for p in $(seq 1000 1050); do
         ip rule del priority $p 2>/dev/null || true
     done
+
+    # 先查 main 表中除默认路由外的所有路由（LAN 网段 / VPN / 静态路由），
+    # 只有原本会走默认路由的流量才进入下方 fwmark 分流，避免内网流量被劫持到 vwan*
+    ip rule add priority 1000 lookup main suppress_prefixlength 0 2>/dev/null
 
     local lan_dev=$(get_lan_device)
     local k=1
@@ -856,7 +860,7 @@ table inet feiyoung_mwan {
     }
     chain forward {
         type filter hook forward priority filter - 1; policy accept;
-        tcp flags syn tcp option maxseg size set 1400
+        oifname "vwan*" tcp flags & (syn | rst) == syn tcp option maxseg size set rt mtu
         iifname "$lan_dev" oifname "vwan*" counter accept
         iifname "vwan*" oifname "$lan_dev" ct state { established, related } counter accept
     }
@@ -937,8 +941,9 @@ if [ "${1:-}" = "stop" ]; then
     exit 0
 fi
 
+# 信号只负责退出，清理统一由 EXIT trap 执行一次
 trap cleanup EXIT
-trap 'cleanup; exit 0' INT TERM
+trap 'exit 0' INT TERM
 
 # main: 守护调度主循环
 main() {

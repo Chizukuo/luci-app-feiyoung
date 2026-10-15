@@ -108,8 +108,11 @@ kv 'uname.machine' "$(uname -m 2>/dev/null)"
 if command -v opkg >/dev/null 2>&1; then
 	package_version=$(opkg status luci-app-feiyoung 2>/dev/null | awk -F': ' '$1 == "Version" { print $2; exit }')
 	kv 'opkg.version' "$package_version"
+elif command -v apk >/dev/null 2>&1; then
+	package_version=$(apk info -v 2>/dev/null | sed -n 's/^luci-app-feiyoung-//p' | head -1)
+	kv 'apk.version' "$package_version"
 else
-	kv 'opkg.version' 'unknown (opkg unavailable)'
+	kv 'opkg.version' 'unknown (opkg/apk unavailable)'
 fi
 
 if command -v jsonfilter >/dev/null 2>&1 && command -v ubus >/dev/null 2>&1; then
@@ -133,25 +136,17 @@ else
 	kv 'feiyoung.status' 'unknown'
 fi
 
-for option in enabled load_balancing passType check_interval connect_timeout total_timeout pause_enabled pause_disconnect_wan client_type diagnostics; do
+for option in enabled load_balancing passType check_interval connect_timeout total_timeout pause_enabled pause_disconnect_wan; do
 	printf 'config.%s=%s\n' "$option" "$(uci_value "feiyoung.general.$option")"
 done
 
-configured_client_type=$(uci_value 'feiyoung.general.client_type')
-case "$configured_client_type" in
-	pc|mobile) effective_client_type="$configured_client_type" ;;
-	*) effective_client_type=pc ;;
-esac
-configured_diagnostics=$(uci_value 'feiyoung.general.diagnostics')
-[ "$configured_diagnostics" = 1 ] && effective_diagnostics=1 || effective_diagnostics=0
-printf 'effective.client_type=%s\n' "$effective_client_type"
-printf 'effective.diagnostics=%s\n' "$effective_diagnostics"
-
+# 会话序号与守护进程 get_config 一致：跳过 enabled=0 的账号节，使 cookie 序号能对上
 acct_idx=1
 for sec in $(uci -q show feiyoung 2>/dev/null | grep '=account' | cut -d. -f2 | cut -d= -f1); do
 	u=$(uci -q get "feiyoung.$sec.username" 2>/dev/null)
 	t=$(uci -q get "feiyoung.$sec.client_type" 2>/dev/null)
 	en=$(uci -q get "feiyoung.$sec.enabled" 2>/dev/null)
+	[ "$en" = 0 ] && continue
 	if [ -n "$u" ]; then
 		if [ ${#u} -ge 7 ]; then
 			u_mask="$(echo "$u" | cut -c 1-3)****$(echo "$u" | cut -c $((${#u} - 3))-${#u})"
@@ -168,13 +163,13 @@ for sec in $(uci -q show feiyoung 2>/dev/null | grep '=account' | cut -d. -f2 | 
 	fi
 done
 
-for mode in pc mobile; do
-	if [ -f "/tmp/feiyoung_cookie_$mode" ] || [ -f "/tmp/feiyoung_cookie_1" -a "$mode" = "pc" ] || [ -f "/tmp/feiyoung_cookie_2" -a "$mode" = "mobile" ]; then
-		printf 'cookie.%s.exists=true\n' "$mode"
-	else
-		printf 'cookie.%s.exists=false\n' "$mode"
-	fi
-done
+if command -v nft >/dev/null 2>&1 && nft list table inet feiyoung_mwan >/dev/null 2>&1; then
+	kv 'mwan.table' 'present'
+else
+	kv 'mwan.table' 'absent'
+fi
+printf '%s\n' 'mwan.rules:'
+ip rule 2>/dev/null | awk -F: '$1 >= 90 && $1 <= 1050 { r=$2; gsub(/[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+/, "<ip>", r); print "rule " $1 ":" r }'
 
 if command -v jsonfilter >/dev/null 2>&1 && command -v ubus >/dev/null 2>&1; then
 	wan=$(ubus call network.interface.wan status 2>/dev/null)
@@ -282,9 +277,9 @@ else
 	printf '%s\n' 'tc=unsupported (tc unavailable)'
 fi
 
-printf 'events.prefix=FEIYOUNG_DIAG build=%s\n' "$BUILD"
+printf '%s\n' 'events:'
 if command -v logread >/dev/null 2>&1; then
-	logread 2>/dev/null | grep "FEIYOUNG_DIAG build=$BUILD" | tail -n 1000 | sed -E \
+	logread -e feiyoung 2>/dev/null | tail -n 100 | sed -E \
 		-e 's#https?://[^[:space:]]+#<url-redacted>#g' \
 		-e 's#(user(name)?|password|passwd|cookie|token|paramStr)[=:][^[:space:]]+#\1=<redacted>#Ig'
 else

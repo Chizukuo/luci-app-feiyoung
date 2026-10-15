@@ -20,7 +20,7 @@ cleanup() {
 trap cleanup EXIT HUP INT TERM
 mkdir -p "$TEST_ROOT/bin" "$TEST_ROOT/sys/class/net/eth0/statistics" "$TEST_ROOT/etc"
 
-for command in ifup ifdown curl wifi ip login service; do
+for command in ifup ifdown curl wifi login service; do
 	cat > "$TMP/bin/$command" <<EOF
 #!/bin/sh
 printf '%s %s\\n' '$command' "\$*" >> "\$FEIYOUNG_TEST_CALLS"
@@ -51,11 +51,28 @@ case "$is_mobile" in 1) printf '%s' 'http://58.53.199.144:8001/style/school_hbct
 EOF
 chmod +x "$TMP/bin/curl"
 
+# ip/nft 只允许只读查询，其余调用仍记为危险操作
+cat > "$TMP/bin/ip" <<'EOF'
+#!/bin/sh
+case "$*" in
+  rule) printf '0:\tfrom all lookup local\n101:\tfrom 100.64.1.2 lookup 101\n1000:\tfrom all lookup main suppress_prefixlength 0\n32766:\tfrom all lookup main\n' ;;
+  *) printf 'ip %s\n' "$*" >> "$FEIYOUNG_TEST_CALLS" ;;
+esac
+EOF
+cat > "$TMP/bin/nft" <<'EOF'
+#!/bin/sh
+case "$*" in
+  'list table inet feiyoung_mwan') exit 0 ;;
+  *) printf 'nft %s\n' "$*" >> "$FEIYOUNG_TEST_CALLS" ;;
+esac
+EOF
+chmod +x "$TMP/bin/ip" "$TMP/bin/nft"
+
 cat > "$TMP/bin/uci" <<'EOF'
 #!/bin/sh
 if [ "${FEIYOUNG_TEST_CONFIG_MISSING:-0}" = 1 ]; then
   case "$*" in
-    *'general.client_type'|*'general.diagnostics') exit 1 ;;
+    *'general.passType'|*'show feiyoung') exit 1 ;;
   esac
 fi
 case "$*" in
@@ -68,8 +85,11 @@ case "$*" in
   *'general.check_interval') printf '30\n' ;;
   *'general.connect_timeout') printf '5\n' ;;
   *'general.total_timeout') printf '10\n' ;;
-  *'general.client_type') printf 'mobile\n' ;;
-  *'general.diagnostics') printf '1\n' ;;
+  *'show feiyoung') printf 'feiyoung.general=global\nfeiyoung.a1=account\nfeiyoung.a2=account\nfeiyoung.a3=account\n' ;;
+  *'a1.username'|*'a3.username') printf '18900001111\n' ;;
+  *'a2.username') printf '13800001234\n' ;;
+  *'a2.enabled') printf '0\n' ;;
+  *'a3.client_type') printf 'mobile\n' ;;
   *) exit 1 ;;
 esac
 EOF
@@ -120,11 +140,13 @@ output=$(PATH="$TMP/bin:$PATH" \
 printf '%s\n' "$output" | grep -q '^board.model=stub$'
 printf '%s\n' "$output" | grep -q '^wan.proto=dhcp$'
 printf '%s\n' "$output" | grep -q '^config.pause_enabled=0$'
-printf '%s\n' "$output" | grep -q '^config.client_type=mobile$'
-printf '%s\n' "$output" | grep -q '^effective.client_type=mobile$'
-printf '%s\n' "$output" | grep -q '^effective.diagnostics=1$'
-printf '%s\n' "$output" | grep -q '^cookie.pc.exists=false$'
-printf '%s\n' "$output" | grep -q '^cookie.mobile.exists=false$'
+printf '%s\n' "$output" | grep -q '^account.1.user=189\*\*\*\*1111 type=pc enabled=1$'
+printf '%s\n' "$output" | grep -q '^account.2.user=189\*\*\*\*1111 type=mobile enabled=1$'
+if printf '%s\n' "$output" | grep -q '138\*\*\*\*1234'; then printf '%s\n' 'disabled account listed' >&2; exit 1; fi
+printf '%s\n' "$output" | grep -q '^mwan.table=present$'
+printf '%s\n' "$output" | grep -q '^rule 101:.*from <ip> lookup 101$'
+printf '%s\n' "$output" | grep -q '^rule 1000:.*lookup main suppress_prefixlength 0$'
+if printf '%s\n' "$output" | grep -q '100\.64\.1\.2'; then printf '%s\n' 'rule ip not redacted' >&2; exit 1; fi
 printf '%s\n' "$output" | grep -q '^feiyoung.status=status$'
 printf '%s\n' "$output" | grep -q '^tc.qdisc:$'
 if printf '%s\n' "$output" | grep -Eiq 'should_not_appear|secret|123456|https?://'; then
@@ -141,10 +163,8 @@ if [ -s "$FEIYOUNG_TEST_CALLS" ]; then
 fi
 printf '%s\n' 'collector isolation test: PASS'
 missing_output=$(PATH="$TMP/bin:$PATH" FEIYOUNG_TEST_CONFIG_MISSING=1 SYSFS="$TMP/sys" PROCFS="$TMP" STATUS_FILE="$TMP/feiyoung_status" "$COLLECTOR" 2>&1)
-printf '%s\n' "$missing_output" | grep -q '^config.client_type=unknown$'
-printf '%s\n' "$missing_output" | grep -q '^effective.client_type=pc$'
-printf '%s\n' "$missing_output" | grep -q '^config.diagnostics=unknown$'
-printf '%s\n' "$missing_output" | grep -q '^effective.diagnostics=0$'
+printf '%s\n' "$missing_output" | grep -q '^config.passType=unknown$'
+if printf '%s\n' "$missing_output" | grep -q '^account\.'; then printf '%s\n' 'phantom account listed' >&2; exit 1; fi
 printf '123.5 0\n' > "$TMP/uptime"
 output=$(PATH="$TMP/bin:$PATH" SYSFS="$TMP/sys" PROCFS="$TMP" STATUS_FILE="$TMP/feiyoung_status" "$COLLECTOR" 2>&1)
 printf '%s\n' "$output" | grep -q '^uptime.seconds=123.5$'

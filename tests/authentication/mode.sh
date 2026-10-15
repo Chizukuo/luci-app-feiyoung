@@ -101,7 +101,10 @@ assert_true "mwan creates priority 1030 for wan source ip" grep -q "ip rule add 
 assert_true "mwan creates priority 1032 for vwan1 source ip" grep -q "ip rule add priority 1032 from 100.64.1.vwan1 lookup 101" "$trace_file"
 assert_true "mwan generates sticky nft table" grep -q "table inet feiyoung_mwan" "$trace_file"
 assert_true "mwan contains numgen mod 2 map" grep -q "ct mark set numgen inc mod 2 map { 0 : 0x10, 1 : 0x20 }" "$trace_file"
-assert_true "mwan sets mss 1400" grep -q "tcp option maxseg size set 1400" "$trace_file"
+assert_true "mwan consults main table before fwmark split" grep -q "ip rule add priority 1000 lookup main suppress_prefixlength 0" "$trace_file"
+assert_true "mwan clamps mss to route mtu on vwan egress" grep -q 'oifname "vwan\*" tcp flags & (syn | rst) == syn tcp option maxseg size set rt mtu' "$trace_file"
+if grep -q "maxseg size set 1400" "$trace_file"; then fail "mwan must not force a fixed MSS"; fi
+assertions=$((assertions + 1))
 
 # 4.3 聚合规则平滑卸载
 : > "$trace_file"

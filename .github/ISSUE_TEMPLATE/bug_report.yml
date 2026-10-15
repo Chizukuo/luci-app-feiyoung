@@ -49,6 +49,7 @@ body:
       label: 运行日志 (Logread Output)
       description: |
         请在终端执行 `logread -e feiyoung | tail -n 50` 并将输出完整粘贴在此处。
+        如方便，可附上仓库中 `root/usr/bin/feiyoung-diagnose` 的输出（只读、已脱敏，不随安装包分发，用法见 README「排错与日志观测」）。
       render: shell
     validations:
       required: true
