@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tests/authentication/flow.sh
-# v2.2.0 多会话并发认证与移动端 WAF 绕过 Mock 自动化测试套件
+# v2.2.1 多会话并发认证与移动端 WAF 绕过 Mock 自动化测试套件
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"

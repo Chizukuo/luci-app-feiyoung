@@ -40,7 +40,7 @@ source <(sed -n '/^portal_fields() {/,/^}/p' "$diagnose_src")
 source <(sed -n '/^kv() {/,/^}/p' "$diagnose_src")
 
 # 2. Key-Value 格式化测试
-assert_eq "version=2.2.0" "$(kv 'version' '2.2.0')" "kv format"
+assert_eq "version=2.2.1" "$(kv 'version' '2.2.1')" "kv format"
 assert_eq "empty=unknown" "$(kv 'empty' '')" "kv fallback unknown"
 
 # 3. 门户 HTML 隐藏字段提取解析器测试 (portal_fields)

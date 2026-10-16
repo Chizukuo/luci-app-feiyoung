@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tests/authentication/mode.sh
-# v2.2.0 多拨聚合 (MWAN)、MACVLAN 虚拟链路与多会话路由状态 Mock 测试
+# v2.2.1 多拨聚合 (MWAN)、MACVLAN 虚拟链路与多会话路由状态 Mock 测试
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"

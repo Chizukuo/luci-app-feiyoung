@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tests/run_all.sh
-# luci-app-feiyoung v2.2.0 统一离线自动化 Mock 测试运行器
+# luci-app-feiyoung v2.2.1 统一离线自动化 Mock 测试运行器
 set -euo pipefail
 
 dir="$(cd "$(dirname "$0")" && pwd)"
@@ -16,7 +16,7 @@ passed=0
 failed=0
 
 echo "======================================================================"
-echo "    luci-app-feiyoung v2.2.0 离线 Mock 自动化回归测试流水线"
+echo "    luci-app-feiyoung v2.2.1 离线 Mock 自动化回归测试流水线"
 echo "======================================================================"
 echo ""
 

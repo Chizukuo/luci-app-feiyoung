@@ -2,7 +2,7 @@
 # Read-only diagnostics: default mode is passive; --portal performs only
 # bounded GET probes and never authenticates or changes network/configuration.
 
-BUILD='2.2.0-1'
+BUILD='2.2.1-1'
 SYSFS=${SYSFS:-/sys}
 PROCFS=${PROCFS:-/proc}
 STATUS_FILE=${STATUS_FILE:-/tmp/feiyoung_status}
@@ -95,7 +95,7 @@ uci_value() {
 }
 
 printf 'FEIYOUNG_DIAGNOSTICS build=%s\n' "$BUILD"
-kv 'version' '2.2.0'
+kv 'version' '2.2.1'
 kv 'sample.utc' "$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null)"
 if [ -r "$PROCFS/uptime" ]; then
 	kv 'uptime.seconds' "$(awk '{print $1; exit}' "$PROCFS/uptime")"

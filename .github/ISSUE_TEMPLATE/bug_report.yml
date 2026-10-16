@@ -12,8 +12,8 @@ body:
     id: version
     attributes:
       label: 插件版本 (Plugin Version)
-      description: 当前安装的 luci-app-feiyoung 版本（如 v2.2.0）
-      placeholder: "v2.2.0"
+      description: 当前安装的 luci-app-feiyoung 版本（如 v2.2.1）
+      placeholder: "v2.2.1"
     validations:
       required: true
   - type: input

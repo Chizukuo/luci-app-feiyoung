@@ -122,7 +122,7 @@ EOF
 cat > "$TMP/bin/logread" <<'EOF'
 #!/bin/sh
 printf 'old user=should_not_appear https://secret.invalid/x\n'
-printf 'FEIYOUNG_DIAG build=2.2.0-1 state=online user=123456 password=secret https://secret.invalid/x\n'
+printf 'FEIYOUNG_DIAG build=2.2.1-1 state=online user=123456 password=secret https://secret.invalid/x\n'
 EOF
 chmod +x "$TMP/bin"/*
 printf 'ok\n' > "$TMP/sys/class/net/eth0/operstate"
