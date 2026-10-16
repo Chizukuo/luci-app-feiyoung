@@ -92,10 +92,13 @@ curl_http_code=204
 assert_true "online check when HTTP 204" check_account_online "wan" "pc"
 curl_http_code=404
 assert_true "online check when HTTP 404" check_account_online "wan" "pc"
+probe_rc() { local rc=0; check_account_online "$@" || rc=$?; echo "$rc"; }
 curl_http_code=302
-assert_false "offline check when intercepted with HTTP 302" check_account_online "wan" "pc"
+assert_eq "1" "$(probe_rc "wan" "pc")" "portal redirect is a confirmed offline"
 curl_http_code=000
-assert_false "offline check when connection failed" check_account_online "wan" "pc"
+assert_eq "2" "$(probe_rc "wan" "pc")" "no response is unknown, not offline"
+curl_http_code=""
+assert_eq "2" "$(probe_rc "wan" "pc")" "empty curl output is unknown, not offline"
 
 # 5. Mock 模拟完整 PC 认证流 (HTML 页面提取 paramStr)
 ACCT_1_USER="18900001111"

@@ -551,23 +551,24 @@ setup_interfaces() {
 }
 
 # check_account_online: 检查指定网卡与客户端类型是否处于已认证在线状态
+# 返回 0=在线；1=收到非在线响应（如被重定向到认证门户），确认掉线；
+#      2=两个探测点均无响应，可能只是链路被大流量下载占满，状态未知
 check_account_online() {
     local dev="$1"
     local type="$2"
     local ua="$UA_PC"
     [ "$type" = "mobile" ] && ua="$UA_MOBILE"
 
-    local http_code
-    http_code=$(curl -s --interface "$dev" -A "$ua" --connect-timeout 2 --max-time 3 -o /dev/null -w "%{http_code}" "http://223.5.5.5" 2>/dev/null)
-    if [ "$http_code" = "200" ] || [ "$http_code" = "204" ] || [ "$http_code" = "404" ]; then
-        return 0
-    fi
-    # 偶发网络抖动时进行备用探测，避免晚高峰单包丢包误判掉线
-    http_code=$(curl -s --interface "$dev" -A "$ua" --connect-timeout 2 --max-time 3 -o /dev/null -w "%{http_code}" "http://119.29.29.29" 2>/dev/null)
-    if [ "$http_code" = "200" ] || [ "$http_code" = "204" ] || [ "$http_code" = "404" ]; then
-        return 0
-    fi
-    return 1
+    local site http_code result=2
+    for site in "http://223.5.5.5" "http://119.29.29.29"; do
+        http_code=$(curl -s --interface "$dev" -A "$ua" --connect-timeout 3 --max-time 5 -o /dev/null -w "%{http_code}" "$site" 2>/dev/null)
+        case "$http_code" in
+            200|204|404) return 0 ;;
+            ""|000) ;;
+            *) result=1 ;;
+        esac
+    done
+    return $result
 }
 
 # login_account: 针对特定账号执行门户发现与登录认证
@@ -1014,6 +1015,7 @@ main() {
         local online_count=0
         local online_dev_list=""
         local any_offline=0
+        local any_suspect=0
         local now=$(date +%s)
 
         local i=1
@@ -1023,13 +1025,33 @@ main() {
             eval "type=\${ACCT_${i}_TYPE}"
             eval "user=\${ACCT_${i}_USER}"
 
+            local probe=0 miss
+            check_account_online "$dev" "$type" || probe=$?
+            eval "miss=\${PROBE_MISS_${i}:-0}"
+
+            # 探测无响应不等于掉线：大流量下载占满链路时探测会超时，若据此重新认证/重置 DHCP/拆除聚合，
+            # 反而会切断所有连接。已有 IP 时暂按在线处理并缩短复查间隔，连续 3 次无响应才判定离线；
+            # 被门户重定向（probe=1）则立即判定离线
             local is_online=0
-            if check_account_online "$dev" "$type"; then
+            if [ "$probe" -eq 0 ]; then
                 is_online=1
+                miss=0
+            elif [ "$probe" -eq 2 ] && [ "$miss" -lt 2 ] && [ -n "$(get_dev_ip "$dev")" ]; then
+                is_online=1
+                miss=$((miss + 1))
+                any_suspect=1
+                log "会话 $i ($dev) 在线探测无响应 ($miss/3)，可能链路繁忙，暂不判定离线"
+            else
+                miss=0
             fi
+            eval "PROBE_MISS_${i}=$miss"
 
             if [ "$is_online" = "1" ]; then
-                eval "ACCT_${i}_STATUS=\"在线\""
+                if [ "$miss" -gt 0 ]; then
+                    eval "ACCT_${i}_STATUS=\"在线 (探测超时 $miss/3)\""
+                else
+                    eval "ACCT_${i}_STATUS=\"在线\""
+                fi
                 eval "ACCT_${i}_ONLINE=1"
                 eval "FAIL_COUNT_${i}=0"
                 online_count=$((online_count + 1))
@@ -1112,8 +1134,9 @@ main() {
             update_overall_status "运行中 - 正在重连... (0/$NUM_ACCTS 在线)"
         fi
 
-        # 在线时按 check_interval 轮询；有离线时按 5 秒秒级自愈
+        # 在线时按 check_interval 轮询；探测无响应时 10 秒内复查；有离线时按 5 秒秒级自愈
         local sleep_time="$check_interval"
+        [ "$any_suspect" -eq 1 ] && [ "$sleep_time" -gt 10 ] && sleep_time=10
         [ "$any_offline" -eq 1 ] && sleep_time=5
 
         sleep "$sleep_time" &
